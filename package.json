@@ -1,0 +1,20 @@
+{
+  "name": "barrister",
+  "description": "Client and server bindings for Barrister RPC",
+  "version": "0.1.0",
+  "author": "James Cooper <james@bitmechanic.com>",
+  "license": "MIT",
+  "contributors": [
+    { "name": "James Cooper", "email": "james@bitmechanic.com" }
+  ],
+  "keywords": ["rpc", "server"],
+  "main": "dist/barrister.node.js",
+  "dependencies": {
+      "request" : "2.9.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coopernurse/barrister-js.git"
+  },
+  "engines": { "node": ">=0.4.0" }
+}

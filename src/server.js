@@ -3,11 +3,6 @@ function okResp(id, result) {
     return { "jsonrpc": "2.0", "id": id, "result": result };
 }
 
-function errResp(id, code, msg, data) {
-    id = id || null;
-    return { "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": msg, "data": data } };
-}
-
 function Server(idl) {
     this.handlers = { };
     this.contract = new Contract(idl);
@@ -29,7 +24,7 @@ Server.prototype.handleJSON = function(reqJSON, onComplete) {
 
     this.handle(req, function(resp) {
         var respJSON = JSON_stringify(resp);
-        console.log("Resp: " + respJSON);
+        //console.log("Resp: " + respJSON);
         onComplete(respJSON);
     });
 };
@@ -44,10 +39,10 @@ Server.prototype.handle = function(req, onComplete) {
             if (resp.length === req.length) {
                 return onComplete(resp);
             }
-            console.log("req.length=" + req.length + " resp.length=" + resp.length);
+            //console.log("req.length=" + req.length + " resp.length=" + resp.length);
         };
 
-        console.log("batch request length: " + req.length);
+        //console.log("batch request length: " + req.length);
 
         if (req.length > 0) {
             for (i = 0 ; i < req.length; i++) {
@@ -66,7 +61,7 @@ Server.prototype.handle = function(req, onComplete) {
 Server.prototype.handleSingle = function(req, onComplete) {
     var me = this;
     var i, msg;
-    console.log("req: " + JSON.stringify(req));
+    //console.log("req: " + JSON.stringify(req));
     if (req.method) {
         if (req.method === "barrister-idl") {
             return onComplete(okResp(req.id, me.contract.idl));
@@ -107,7 +102,7 @@ Server.prototype.handleSingle = function(req, onComplete) {
                 callParams = callParams.concat(req.params);
             }
             callParams.push(function(err, result) {
-                console.log("callback for: " + req.method + " err=" + JSON.stringify(err) + " result=" + result);
+                //console.log("callback for: " + req.method + " err=" + JSON.stringify(err) + " result=" + result);
                 if (err === null || err === undefined) {
                     onComplete(okResp(req.id, result));
                 }
@@ -127,8 +122,8 @@ Server.prototype.handleSingle = function(req, onComplete) {
                     onComplete(errObj);
                 }
             });
-            console.log("CALL method=" + req.method + " req.params=" + JSON.stringify(req.params) +
-                        " params=" + JSON.stringify(callParams));
+            //console.log("CALL method=" + req.method + " req.params=" + JSON.stringify(req.params) +
+            //            " params=" + JSON.stringify(callParams));
             handler[funcName].apply(handler, callParams);
         }
         else {

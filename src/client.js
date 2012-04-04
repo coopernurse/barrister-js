@@ -37,6 +37,11 @@ function makeRequest(method, params) {
     return req;
 }
 
+function errResp(id, code, msg, data) {
+    id = id || null;
+    return { "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": msg, "data": data } };
+}
+
 function Contract(idl) {
     var i, x, e, f;
     this.idl = idl;
@@ -120,7 +125,7 @@ Contract.prototype.validate = function(namePrefix, expected, isArray, val) {
             fieldKeys = { };
             for (i = 0; i < fields.length; i++) {
                 e = fields[i];
-                valid = me.validate(namePrefix+"."+e.name, e, false, val[e.name]);
+                valid = me.validate(namePrefix+"."+e.name, e, e.is_array, val[e.name]);
                 if (!valid[0]) {
                     return valid;
                 }
@@ -181,10 +186,9 @@ function Batch(client) {
     this.reqList = [];
 }
 
-Batch.prototype.send = function(onComplete) {
+Batch.prototype.send = function(callback) {
     var me = this;
     var reqJson = JSON_stringify(me.reqList, true);
-    console.log("Sending batch: " + reqJson);
     var options = {
         url: me.client.endpoint,
         method: "POST",
@@ -195,7 +199,7 @@ Batch.prototype.send = function(onComplete) {
     };
     request(options, function(error, response, body) {
         if (error) {
-            onComplete({ code: -32000, message: error}, null, null);
+            callback({ code: -32000, message: error}, null, null);
         }
         else {
             var resp;
@@ -203,9 +207,9 @@ Batch.prototype.send = function(onComplete) {
                 resp = JSON.parse(body);
             }
             catch (e) {
-                return onComplete(errResp(null, -32700, "Unable to parse JSON: " + body));
+                return callback(errResp(null, -32700, "Unable to parse JSON: " + body));
             }
-            onComplete(null, resp, me.reqList);
+            callback(null, resp, me.reqList);
         }
     });
 };
@@ -214,49 +218,117 @@ Batch.prototype.request = function(method, params) {
     this.reqList.push(makeRequest(method, params));
 };
 
-function Client(endpoint, onError, onSuccess) {
-    this.endpoint = endpoint;
-    this.request("barrister-idl", [], function(resp) {
-        onError(resp.message);
-    }, function(resp) {
-        this.contract = new Contract(resp);
-        onSuccess();
-    });
+function Client(transport) {
+    this.transport = transport;
+    this.trace = null;
 }
 
-Client.prototype.request = function(method, params, onError, onSuccess) {
-    var req     = makeRequest(method, params);
-    var reqJson = JSON_stringify(req, true);
-    console.log("sending post: method=" + method);
-
-    var options = {
-        url: this.endpoint,
-        method: "POST",
-        headers: {
-            contentType: "application/json"
-        },
-        body: reqJson
-    };
-    request(options, function(error, response, body) {
-        if (error) {
-            onError({ code: -32000, message: error}, req, body);
-        }
-        else {
-            console.log("client parsing: " + body);
+function httpClient(endpoint) {
+    var httpTransport = function(req, callback) {
+        var reqJson = JSON_stringify(req, true);
+        var options = {
+            url: endpoint,
+            method: "POST",
+            headers: {
+                contentType: "application/json"
+            },
+            body: reqJson
+        };
+        request(options, function(error, response, body) {
             var resp;
-            if (body !== undefined && body !== null) {
-                resp = JSON.parse(body);
+
+            if (error) {
+                resp = errResp(req.id, -32000, error);
+            }
+            else if (body !== undefined && body !== null) {
+                try {
+                    resp = JSON.parse(body);
+                }
+                catch (e) {
+                    resp = errResp(req.id, -32700, "Unable to parse response JSON: " + body);
+                }
             }
             else {
                 resp = errResp(req.id, -32603, "Null response body received from server");
             }
 
-            if (resp.error) {
-                onError(resp.error, req, body);
-            }
-            else {
-                onSuccess(resp.result, req);
-            }
+            callback(resp);
+        });
+    };
+
+    return new Client(httpTransport);
+}
+
+Client.prototype.loadContract = function(callback) {
+    var me = this;
+    me.request("barrister-idl", [], function(err, result) {
+        if (err) {
+            callback(err);
+        }
+        else {
+            me.contract = new Contract(result);
+            callback();
+        }
+    });
+};
+
+Client.prototype.enableTrace = function(logFunc) {
+    this.trace = logFunc || console.log;
+};
+
+Client.prototype.disableTrace = function() {
+    this.trace = null;
+};
+
+Client.prototype.proxy = function(ifaceName) {
+    var me = this;
+
+    if (!me.contract) {
+        throw "Contract.loadContract() has not been called yet!";
+    }
+
+    var iface = me.contract.interfaces[ifaceName];
+    if (iface) {
+        var proxy = { };
+        var i, func;
+        for (i = 0; i < iface.functions.length; i++) {
+            func = iface.functions[i];
+            proxy[func.name] = me.functionProxy(ifaceName+"."+func.name);
+        }
+        return proxy;
+    }
+    else {
+        throw "Interface not found: " + ifaceName;
+    }
+};
+
+Client.prototype.functionProxy = function(method) {
+    var client = this;
+    return function() {
+        var args = Array.prototype.slice.call(arguments);
+        var callback = args.pop();
+        client.request(method, args, callback);
+    };
+};
+
+Client.prototype.request = function(method, params, callback) {
+    var me  = this;
+    var req = makeRequest(method, params);
+
+    if (me.trace) {
+        me.trace("Request: " + JSON_stringify(req));
+    }
+
+    this.transport(req, function(resp) {
+        if (me.trace) {
+            me.trace("Response: " + JSON_stringify(resp));
+        }
+
+        if (resp.error) {
+            callback(resp.error, null);
+        }
+        else {
+            callback(null, resp.result);
         }
     });
 };
