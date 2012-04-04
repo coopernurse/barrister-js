@@ -8,7 +8,12 @@
     { "name": "James Cooper", "email": "james@bitmechanic.com" }
   ],
   "keywords": ["rpc", "server"],
-  "main": "dist/barrister.node.js",
+  "main": "dist/barrister.node",
+  "files": [
+      "dist/barrister.node.js",
+      "README.md",
+      "LICENSE"
+  ],
   "dependencies": {
       "request" : "2.9.x"
   },

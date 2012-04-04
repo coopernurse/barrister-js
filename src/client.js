@@ -187,29 +187,36 @@ function Batch(client) {
 }
 
 Batch.prototype.send = function(callback) {
-    var me = this;
-    var reqJson = JSON_stringify(me.reqList, true);
-    var options = {
-        url: me.client.endpoint,
-        method: "POST",
-        headers: {
-            contentType: "application/json"
-        },
-        body: reqJson
-    };
-    request(options, function(error, response, body) {
-        if (error) {
-            callback({ code: -32000, message: error}, null, null);
+    var reqList = this.reqList;
+    this.client._send(reqList, function(resp) {
+        if (resp instanceof Array) {
+            var arr = [ ];
+            var idToResp = { };
+            var i, r, msg;
+            for (i = 0; i < resp.length; i++) {
+                r = resp[i];
+                if (r.id) {
+                    idToResp[r.id] = r;
+                }
+            }
+
+            for (i = 0; i < reqList.length; i++) {
+                if (reqList[i].id) {
+                    r = idToResp[reqList[i].id];
+                    if (r) {
+                        arr.push(r);
+                    }
+                    else {
+                        msg = "No response received for request id: " + reqList[i].id;
+                        arr.push(errResp(-32603, msg));
+                    }
+                }
+            }
+
+            callback(arr);
         }
         else {
-            var resp;
-            try {
-                resp = JSON.parse(body);
-            }
-            catch (e) {
-                return callback(errResp(null, -32700, "Unable to parse JSON: " + body));
-            }
-            callback(null, resp, me.reqList);
+            callback([resp]);
         }
     });
 };
@@ -315,21 +322,28 @@ Client.prototype.request = function(method, params, callback) {
     var me  = this;
     var req = makeRequest(method, params);
 
-    if (me.trace) {
-        me.trace("Request: " + JSON_stringify(req));
-    }
-
-    this.transport(req, function(resp) {
-        if (me.trace) {
-            me.trace("Response: " + JSON_stringify(resp));
-        }
-
+    me._send(req, function(resp) {
         if (resp.error) {
             callback(resp.error, null);
         }
         else {
             callback(null, resp.result);
         }
+    });
+};
+
+Client.prototype._send = function(req, callback) {
+    var me = this;
+    if (me.trace) {
+        me.trace("Request: " + JSON_stringify(req));
+    }
+
+    me.transport(req, function(resp) {
+        if (me.trace) {
+            me.trace("Response: " + JSON_stringify(resp));
+        }
+
+        callback(resp);
     });
 };
 
