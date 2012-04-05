@@ -304,7 +304,7 @@ Batch.prototype.send = function(callback) {
     }
 
     if (reqList.length === 0) {
-        callback(errors, []);
+        callback(errors.length === 0 ? null : errors, []);
         return;
     }
 
