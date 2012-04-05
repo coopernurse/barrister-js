@@ -42,6 +42,30 @@ function errResp(id, code, msg, data) {
     return { "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": msg, "data": data } };
 }
 
+function parseHttpResponse(req, error, body) {
+    var resp;
+    if (error) {
+        resp = errResp(req.id, -32000, error);
+    }
+    else if (body !== undefined && body !== null) {
+        if (typeof body === "object") {
+            resp = body;
+        }
+        else {
+            try {
+                resp = JSON.parse(body);
+            }
+            catch (e) {
+                resp = errResp(req.id, -32700, "Unable to parse response JSON: " + body);
+            }
+        }
+    }
+    else {
+        resp = errResp(req.id, -32603, "Null response body received from server");
+    }
+    return resp;
+}
+
 function Contract(idl) {
     var i, x, e, f;
     this.idl = idl;
@@ -284,42 +308,6 @@ function Client(transport) {
     this.trace = null;
 }
 
-function httpClient(endpoint) {
-    var httpTransport = function(req, callback) {
-        var reqJson = JSON_stringify(req, true);
-        var options = {
-            url: endpoint,
-            method: "POST",
-            headers: {
-                contentType: "application/json"
-            },
-            body: reqJson
-        };
-        request(options, function(error, response, body) {
-            var resp;
-
-            if (error) {
-                resp = errResp(req.id, -32000, error);
-            }
-            else if (body !== undefined && body !== null) {
-                try {
-                    resp = JSON.parse(body);
-                }
-                catch (e) {
-                    resp = errResp(req.id, -32700, "Unable to parse response JSON: " + body);
-                }
-            }
-            else {
-                resp = errResp(req.id, -32603, "Null response body received from server");
-            }
-
-            callback(resp);
-        });
-    };
-
-    return new Client(httpTransport);
-}
-
 Client.prototype.loadContract = function(callback) {
     var me = this;
     me.request("barrister-idl", [], function(err, result) {
@@ -334,7 +322,12 @@ Client.prototype.loadContract = function(callback) {
 };
 
 Client.prototype.enableTrace = function(logFunc) {
-    this.trace = logFunc || console.log;
+    if (logFunc && (typeof logFunc === "function")) {
+        this.trace = logFunc;
+    }
+    else {
+        this.trace = function(s) { console.log(s); };
+    }
 };
 
 Client.prototype.disableTrace = function() {
