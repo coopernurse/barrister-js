@@ -31,9 +31,9 @@ https://github.com/coopernurse/barrister-demo-contact/tree/master/js
 
 * Read the [IDL Docs](http://barrister.bitmechanic.com/docs.html) for more info on writing 
   Barrister IDL files
-* View the [annotated source](http://barrister.bitmechanic.com/api/js/latest/) of the node code.
-  The Client, Batch, and Contract classes are bundled in the web browser code, so this reference
-  is accurate for both Node.js and browser clients.
+* View the annotated source:
+  * [Node.js](http://barrister.bitmechanic.com/api/js/latest/barrister.node.html)
+  * [Browser](http://barrister.bitmechanic.com/api/js/latest/barrister.browser.html)
 * [Barrister Google Group](https://groups.google.com/forum/#!forum/barrister-rpc) - Post questions and ideas here
 
 ## License
