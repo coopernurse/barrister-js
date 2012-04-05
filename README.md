@@ -1,6 +1,6 @@
 # Barrister Javascript Bindings
 
-Develop type safe contracts for your web servers!
+Develop type safe contracts for your web services!
 
 * Usable from Node.js (client and server) or a web browser (client only)
 * For an overview of Barrister RPC, visit: http://barrister.bitmechanic.com/
