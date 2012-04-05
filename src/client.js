@@ -227,22 +227,25 @@ Batch.prototype.functionProxy = function(method) {
 
 // Sends the batch to the server
 //
-// callback will be passed two parameters:
-//   errors  - Array of errors - null if no errors occurred
-//   results - Array of all successful calls
+// The callback will be passed two parameters:
 //
-// errors is array of objects with keys:
-//   method - interface name + "." + function (e.g. "ContactService.put")
-//   params - parameters passed to that function for this request
-//   error  - error object (keys: code, message, data) 
+// * `errors`  - Array of errors - null if no errors occurred
+// * `results` - Array of all successful calls
+//
+// errors, if not null, is an array of objects with keys:
+// 
+// * `method` - interface name + "." + function (e.g. "ContactService.put")
+// *  `params` - parameters passed to that function for this request
+// *  `error`  - error object (keys: code, message, data) 
 //
 // results is array of objects with keys:
-//   method - interface name + "." + function (e.g. "ContactService.put")
-//   params - parameters passed to that function for this request
-//   result - return value for that request. type is function specific.
 //
-// a given request will only appear in one of the two arrays, not both
-// results will be ordered in the batch call order
+// *  `method` - interface name + "." + function (e.g. "ContactService.put")
+// *  `params` - parameters passed to that function for this request
+// *  `result` - return value for that request. type is function specific.
+//
+// A given request will only appear in one of the two arrays, not both
+// results will be ordered in the batch call order.
 //
 Batch.prototype.send = function(callback) {
     var me = this;
