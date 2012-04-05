@@ -60,8 +60,7 @@ Server.prototype.handle = function(req, onComplete) {
 
 Server.prototype.handleSingle = function(req, onComplete) {
     var me = this;
-    var i, msg;
-    //console.log("req: " + JSON.stringify(req));
+    var i, msg, errObj;
     if (req.method) {
         if (req.method === "barrister-idl") {
             return onComplete(okResp(req.id, me.contract.idl));
@@ -80,29 +79,17 @@ Server.prototype.handleSingle = function(req, onComplete) {
         var handler = me.handlers[ifaceName];
 
         if (iface && func && handler && handler[funcName]) {
+            errObj = me.contract.validateReq(req);
+            if (errObj !== null) {
+                return onComplete(errObj);
+            }
+
             var paramLen = req.params ? req.params.length : 0;
-            if (paramLen !== func.params.length) {
-                msg = "Param length: " + paramLen + " != expected length: " + func.params.length;
-                return onComplete(errResp(req.id, -32602, msg));
-            }
-
-            for (i = 0; i < func.params.length; i++) {
-                var valid = me.contract.validate(func.params[i].name, 
-                                                 func.params[i], 
-                                                 func.params[i].is_array,
-                                                 req.params[i]);
-                if (!valid[0]) {
-                    msg = "Invalid request param["+i+"]: " + valid[1];
-                    return onComplete(errResp(req.id, -32602, msg));
-                }
-            }
-
             var callParams = [];
             if (paramLen > 0) {
                 callParams = callParams.concat(req.params);
             }
             callParams.push(function(err, result) {
-                //console.log("callback for: " + req.method + " err=" + JSON.stringify(err) + " result=" + result);
                 if (err === null || err === undefined) {
                     onComplete(okResp(req.id, result));
                 }
@@ -122,8 +109,6 @@ Server.prototype.handleSingle = function(req, onComplete) {
                     onComplete(errObj);
                 }
             });
-            //console.log("CALL method=" + req.method + " req.params=" + JSON.stringify(req.params) +
-            //            " params=" + JSON.stringify(callParams));
             handler[funcName].apply(handler, callParams);
         }
         else {
