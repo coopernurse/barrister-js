@@ -1,14 +1,18 @@
 
-all: browser node
+all: dist
 
 clean:
 	rm -rf dist
+	rm -rf docs
 
 init:
 	mkdir -p dist
 
 json: init
 	uglifyjs -nc -o dist/json2.min.js vendor/json2.js 
+
+dist: browser node
+	docco dist/barrister.node.js dist/barrister.browser.js
 
 browser: json
 	cat src/browser_header.js src/client.js src/browser_footer.js > dist/barrister.browser.js
