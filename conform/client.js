@@ -23,21 +23,27 @@ function nextCommand() {
 
     var line = commands.shift();
     if (line === "start_batch") {
-        batch = client.startBatch();
+        batch = client.batch();
         batchCols = [];
         nextCommand();
     }
     else if (line === "end_batch") {
-        batch.send(function(results) {
+        batch.send(function(errors, results) {
+            var s;
+
+            if (errors) {
+                for (x = 0; x < errors.length; x++) {
+                    s = "|rpcerr|" + errors[x].error.code;
+                    outStream.write(cols[0] + "|" + cols[1] + "|" + cols[2] + s + "\n");
+                    outStream.flush();
+                }
+            }
+
             for (x = 0; x < results.length; x++) {
-                var s;
                 result = results[x];
                 cols   = batchCols[x];
                 if (!result) {
                     s = "|err|null result!!";
-                }
-                else if (result.error) {
-                    s = "|rpcerr|" + result.error.code;
                 }
                 else {
                     s = "|ok|" + barrister.JSON_stringify(result.result);

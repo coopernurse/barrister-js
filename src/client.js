@@ -182,15 +182,54 @@ Contract.prototype.validationErr = function(namePrefix, expType, actType, val) {
 };
 
 function Batch(client) {
-    this.client = client;
+    this.client  = client;
     this.reqList = [];
 }
 
+Batch.prototype.proxy = function(ifaceName) {
+    var me = this;
+    return me.client._proxy(function(method) { return me.functionProxy(method); }, ifaceName);
+};
+
+Batch.prototype.functionProxy = function(method) {
+    var client = this;
+    return function() {
+        // unlike Client.functionProxy, don't pop the last arg
+        // since batch invocations don't supply callbacks
+        var args = Array.prototype.slice.call(arguments);
+        client.request(method, args);
+    };
+};
+
+// Sends the batch to the server
+//
+// callback will be passed two parameters:
+//   errors  - Array of errors - null if no errors occurred
+//   results - Array of all successful calls
+//
+// errors is array of objects with keys:
+//   method - interface name + "." + function (e.g. "ContactService.put")
+//   params - parameters passed to that function for this request
+//   error  - error object (keys: code, message, data) 
+//
+// results is array of objects with keys:
+//   method - interface name + "." + function (e.g. "ContactService.put")
+//   params - parameters passed to that function for this request
+//   result - return value for that request. type is function specific.
+//
+// a given request will only appear in one of the two arrays, not both
+// results will be ordered in the batch call order
+//
 Batch.prototype.send = function(callback) {
-    var reqList = this.reqList;
-    this.client._send(reqList, function(resp) {
-        if (resp instanceof Array) {
-            var arr = [ ];
+    var me = this;
+    var reqList = me.reqList;
+    me.client._send(reqList, function(resp) {
+        if (resp !== null && resp !== undefined && resp instanceof Array) {
+
+            // reorder results to match the order of the requests,
+            // as server may return them in a different order
+            var errors = [ ];
+            var results = [ ];
             var idToResp = { };
             var i, r, msg;
             for (i = 0; i < resp.length; i++) {
@@ -204,21 +243,36 @@ Batch.prototype.send = function(callback) {
                 if (reqList[i].id) {
                     r = idToResp[reqList[i].id];
                     if (r) {
-                        arr.push(r);
+                        r = me.wrapResp(reqList[i], r);
+                        if (r.error) {
+                            errors.push();
+                        }
+                        else {
+                            results.push(r);
+                        }
                     }
                     else {
                         msg = "No response received for request id: " + reqList[i].id;
-                        arr.push(errResp(-32603, msg));
+                        errors.push(me.wrapResp(reqList[i], errResp(-32603, msg)));
                     }
                 }
             }
 
-            callback(arr);
+            callback(errors.length === 0 ? null : errors, results);
         }
         else {
-            callback([resp]);
+            // single error - probably a transport related issue
+            // we can't correlate this to any single request, so pass
+            // an empty req object to wrapResp
+            callback([me.wrapResp({ }, resp)], null);
         }
     });
+};
+
+Batch.prototype.wrapResp = function(req, resp) {
+    resp.method = req.method;
+    resp.params = req.params;
+    return resp;
 };
 
 Batch.prototype.request = function(method, params) {
@@ -287,7 +341,16 @@ Client.prototype.disableTrace = function() {
     this.trace = null;
 };
 
+Client.prototype.batch = function() {
+    return new Batch(this);
+};
+
 Client.prototype.proxy = function(ifaceName) {
+    var me = this;
+    return me._proxy(function(method) { return me.functionProxy(method); }, ifaceName);
+};
+
+Client.prototype._proxy = function(funcProxyCreator, ifaceName) {
     var me = this;
 
     if (!me.contract) {
@@ -300,7 +363,7 @@ Client.prototype.proxy = function(ifaceName) {
         var i, func;
         for (i = 0; i < iface.functions.length; i++) {
             func = iface.functions[i];
-            proxy[func.name] = me.functionProxy(ifaceName+"."+func.name);
+            proxy[func.name] = funcProxyCreator(ifaceName+"."+func.name);
         }
         return proxy;
     }
@@ -312,8 +375,16 @@ Client.prototype.proxy = function(ifaceName) {
 Client.prototype.functionProxy = function(method) {
     var client = this;
     return function() {
+        // last arg is always the callback. pop it off the
+        // args copy so that it's not passed as a RPC parameter
         var args = Array.prototype.slice.call(arguments);
         var callback = args.pop();
+
+        // sanity check
+        if (callback === undefined || callback === null || typeof callback !== "function") {
+            throw "Last arg to " + method + " must be a callback function!";
+        }
+
         client.request(method, args, callback);
     };
 };
@@ -345,8 +416,4 @@ Client.prototype._send = function(req, callback) {
 
         callback(resp);
     });
-};
-
-Client.prototype.startBatch = function() {
-    return new Batch(this);
 };
