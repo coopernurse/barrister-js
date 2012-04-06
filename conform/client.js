@@ -23,7 +23,7 @@ function nextCommand() {
 
     var line = commands.shift();
     if (line === "start_batch") {
-        batch = client.batch();
+        batch = client.startBatch();
         batchCols = [];
         nextCommand();
     }
