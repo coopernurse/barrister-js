@@ -13,6 +13,9 @@ json: init
 
 dist: browser node
 	docco dist/barrister.node.js dist/barrister.browser.js
+	rm -rf post-build
+	mkdir -p post-build
+	cp dist/*.js post-build
 
 browser: json
 	cat src/browser_header.js src/client.js src/browser_footer.js > dist/barrister.browser.js
