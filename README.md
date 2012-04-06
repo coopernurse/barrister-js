@@ -14,11 +14,11 @@ For Node.js:
 For web browsers:
 
     # download either of these:
-    curl http://bit.ly/HjyeZl > barrister.browser.js
-    curl http://bit.ly/Hh9kIs > barrister.browser.min.js
+    curl http://barrister.bitmechanic.com/dist/js/latest/barrister.browser.js  > barrister.browser.js
+    curl http://barrister.bitmechanic.com/dist/js/latest/barrister.browser.min.js > barrister.browser.min.js
     
     # download Crockford's json2.min.js to provide JSON support
-    curl http://bit.ly/HccvOi > json2.min.js
+    curl http://barrister.bitmechanic.com/dist/js/latest/json2.min.js > json2.min.js
     
 ## Demo
 
