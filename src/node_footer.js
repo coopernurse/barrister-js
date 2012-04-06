@@ -2,7 +2,7 @@
 // httpClient returns a Client instance for the given URL endpoint
 var httpClient = function(endpoint) {
     var httpTransport = function(req, callback) {
-        var reqJson = JSON_stringify(req, true);
+        var reqJson = JSON_stringify(req);
         var options = {
             url: endpoint,
             method: "POST",

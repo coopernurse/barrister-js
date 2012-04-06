@@ -94,7 +94,7 @@ http.createServer(function (req, res) {
         var data = "";
         req.on("data", function(c) { data += c; });
         req.on("end", function() {
-            server.handleJSON(data, function(resp) {
+            server.handleJSON({}, data, function(resp) {
                 res.writeHead(200, {'Content-Type': 'application/json'});
                 res.end(resp);
             });

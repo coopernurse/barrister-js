@@ -301,6 +301,29 @@ Contract.prototype.validateReq = function(req) {
     return null;
 };
 
+Contract.prototype.validateResp = function(req, resp) {
+    // ignore error responses and IDL requests
+    if (!resp.result || req.method === "barrister-idl") {
+        return resp;
+    }
+
+    // verify req.method exists on IDL
+    var func = this.functions[req.method];
+    if (!func) {
+        return errResp(req.id, -32601, "Method not found: " + req.method);
+    }
+
+    var valid = this.validate("", func.returns, func.returns.is_array, resp.result);
+    if (!valid[0]) {
+        var msg = "Invalid response for " + req.method + ": " + valid[1];
+        console.log("ERROR: " + msg);
+        return errResp(req.id, -32001, msg);
+    }
+    else {
+        return resp;
+    }
+};
+
 // getAllStructFields returns an array of fields for the given struct and its
 // ancestors. It's recursive.
 //
