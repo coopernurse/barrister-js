@@ -7,7 +7,7 @@ var httpClient = function(endpoint) {
             url: endpoint,
             method: "POST",
             headers: {
-                contentType: "application/json"
+                "Content-Type": "application/json"
             },
             body: reqJson
         };
