@@ -389,29 +389,25 @@ Batch.prototype._functionProxy = function(method) {
 //
 // The callback will be passed two parameters:
 //
-// * `errors`  - Array of errors - null if no errors occurred
-// * `results` - Array of all successful calls
+// * `err`     - Single RPC error - typically only set if a transport error occurs
+// * `results` - Array of all results in the batch in the same order that the requests were
+//               queued on the batch.  Results may contain RPC errors as well as successes
 //
-// errors, if not null, is an array of objects with keys:
-// 
-// * `method` - interface name + "." + function (e.g. "ContactService.put")
-// *  `params` - parameters passed to that function for this request
-// *  `error`  - error object (keys: code, message, data) 
+// results is array of JSON-RPC result objects.  test for these keys:
 //
-// results is array of objects with keys:
-//
-// *  `method` - interface name + "." + function (e.g. "ContactService.put")
-// *  `params` - parameters passed to that function for this request
-// *  `result` - return value for that request. type is function specific.
-//
-// A given request will only appear in one of the two arrays, not both
-// results will be ordered in the batch call order.
+// *  `error` - If set, this result is an error.  Value if an object with 'code', 'message', 
+//              and 'data' (optional) keys.
+// *  `result` - If set, this result is a success. Value is the return value from the RPC call.
 //
 Batch.prototype.send = function(callback) {
     var me = this;
-    var reqList = [];
-    var errors  = [];
     var i, r, errObj;
+
+    // map of request ids to response objects
+    var idToResp = { };
+
+    // requests to send to server
+    var reqList = [];
 
     // iterate through requests queued on this batch, validate them,
     // and copy them to the errors list or reqList
@@ -420,7 +416,7 @@ Batch.prototype.send = function(callback) {
         if (me.client.validateRequest) {
             errObj = me.client.contract.validateReq(r);
             if (errObj) {
-                errors.push(errObj);
+                idToResp[r.id] = errObj;
             }
             else {
                 reqList.push(r);
@@ -431,11 +427,37 @@ Batch.prototype.send = function(callback) {
         }
     }
 
+    var genResponseArr = function(reqList, idToResp) {
+        var respList = [ ];
+        var respObj;
+        for (i = 0; i < reqList.length; i++) {
+            if (reqList[i].id) {
+                r = idToResp[reqList[i].id];
+                if (r) {
+                    r = me.wrapResp(reqList[i], r);
+                    if (r.error) {
+                        respObj = { error: r.error };
+                    }
+                    else {
+                        respObj = { result: r.result };
+                    }
+                }
+                else {
+                    msg = "No response received for request id: " + reqList[i].id;
+                    respObj = { error: me.wrapResp(reqList[i], errResp(-32603, msg)) };
+                }
+
+                respList.push(me.wrapResp(reqList[i], respObj));
+            }
+        }
+        return respList;
+    };
+
     // We have no valid requests, so hit the callback immediately.
     // This could occur if the batch were empty, or if all requests in
     // the batch failed type validation
     if (reqList.length === 0) {
-        callback(errors.length === 0 ? null : errors, []);
+        callback(null, genResponseArr(me.reqList, idToResp));
         return;
     }
 
@@ -445,9 +467,6 @@ Batch.prototype.send = function(callback) {
             // reorder results to match the order of the requests,
             // as server may return them in a different order
             var results = [ ];
-
-            // map of request ids to response objects
-            var idToResp = { };
 
             var i, r, msg;
             for (i = 0; i < resp.length; i++) {
@@ -460,36 +479,18 @@ Batch.prototype.send = function(callback) {
             // iterate through reqList and find the response matching each request id.
             // push onto the errors list or results list depending on whether the 
             // response was successful or not.
-            for (i = 0; i < reqList.length; i++) {
-                if (reqList[i].id) {
-                    r = idToResp[reqList[i].id];
-                    if (r) {
-                        r = me.wrapResp(reqList[i], r);
-                        if (r.error) {
-                            errors.push();
-                        }
-                        else {
-                            results.push(r);
-                        }
-                    }
-                    else {
-                        msg = "No response received for request id: " + reqList[i].id;
-                        errors.push(me.wrapResp(reqList[i], errResp(-32603, msg)));
-                    }
-                }
-            }
-
-            callback(errors.length === 0 ? null : errors, results);
+            callback(null, genResponseArr(me.reqList, idToResp));
         }
         else {
             // single error - probably a transport related issue
             // we can't correlate this to any single request, so pass
             // an empty req object to wrapResp
-            callback([me.wrapResp({ }, resp)], null);
+            callback(resp, null);
         }
     });
 };
 
+// Adds the request id and params to the response so that the batch send() callback
 Batch.prototype.wrapResp = function(req, resp) {
     resp.method = req.method;
     resp.params = req.params;
@@ -585,7 +586,7 @@ Client.prototype._proxy = function(funcProxyCreator, ifaceName) {
     }
 };
 
-// creates a function proxy for Client, which will make a request to the
+// Creates a function proxy for Client, which will make a request to the
 // server when called.
 Client.prototype._functionProxy = function(method) {
     var client = this;

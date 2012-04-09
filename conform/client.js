@@ -28,29 +28,28 @@ function nextCommand() {
         nextCommand();
     }
     else if (line === "end_batch") {
-        batch.send(function(errors, results) {
+        batch.send(function(err, results) {
             var s;
 
-            if (errors) {
-                for (x = 0; x < errors.length; x++) {
-                    s = "|rpcerr|" + errors[x].error.code;
+            if (err) {
+                s = "|rpcerr|" + err.code;
+                outStream.write(cols[0] + "|" + cols[1] + "|" + cols[2] + s + "\n");
+                outStream.flush();
+            }
+            else {
+                for (x = 0; x < results.length; x++) {
+                    result = results[x];
+                    cols   = batchCols[x];
+                    if (result.error) {
+                        s = "|rpcerr|" + result.error.code;
+                    }
+                    else {
+                        s = "|ok|" + barrister.JSON_stringify(result.result);
+                    }
+                    
                     outStream.write(cols[0] + "|" + cols[1] + "|" + cols[2] + s + "\n");
                     outStream.flush();
                 }
-            }
-
-            for (x = 0; x < results.length; x++) {
-                result = results[x];
-                cols   = batchCols[x];
-                if (!result) {
-                    s = "|err|null result!!";
-                }
-                else {
-                    s = "|ok|" + barrister.JSON_stringify(result.result);
-                }
-
-                outStream.write(cols[0] + "|" + cols[1] + "|" + cols[2] + s + "\n");
-                outStream.flush();
             }
             batch = null;
             batchCols = null;
