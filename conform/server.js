@@ -84,20 +84,12 @@ server.addHandler("A", new A());
 server.addHandler("B", new B());
 
 http.createServer(function (req, res) {
-    if (req.url === '/exit') {
-        setTimeout(function() {
-            process.exit(0);
-        }, 50);
-        res.end("ok");
-    }
-    else {
-        var data = "";
-        req.on("data", function(c) { data += c; });
-        req.on("end", function() {
-            server.handleJSON({}, data, function(resp) {
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.end(resp);
-            });
+    var data = "";
+    req.on("data", function(c) { data += c; });
+    req.on("end", function() {
+        server.handleJSON({}, data, function(resp) {
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            res.end(resp);
         });
-    }
+    });
 }).listen(9233);
