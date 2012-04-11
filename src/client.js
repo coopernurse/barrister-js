@@ -1,5 +1,5 @@
 // Function to create IDs for requests
-var rchars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghiklmnopqrstuvwxyz";
+var rchars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 function randstr(len) {
     var s = "";
     var i;
