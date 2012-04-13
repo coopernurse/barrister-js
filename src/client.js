@@ -109,6 +109,7 @@ function Contract(idl) {
     this.functions  = { };
     this.structs    = { };
     this.enums      = { };
+    this.meta       = { };
 
     // Separate the IDL into interfaces/structs/enums
     for (i = 0; i < idl.length; i++) {
@@ -125,6 +126,13 @@ function Contract(idl) {
         }
         else if (e.type === "enum") {
             this.enums[e.name] = e;
+        }
+        else if (e.type === "meta") {
+            for (x in e) {
+                if (e.hasOwnProperty(x) && x !== "type") {
+                    this.meta[x] = e[x];
+                }
+            }
         }
     }
 }
@@ -526,6 +534,11 @@ Client.prototype.loadContract = function(callback) {
             callback();
         }
     });
+};
+
+// getMeta returns an object of name/value pair metadata for the client's Contract
+Client.prototype.getMeta = function() {
+    return this.contract.meta;
 };
 
 // enableTrace turns on request/response logging
