@@ -39,3 +39,16 @@ https://github.com/coopernurse/barrister-demo-contact/tree/master/js
 ## License
 
 Distributed under the MIT license.  See LICENSE file for details.
+
+## Release / Tag notes
+
+Note to self on how to tag release
+
+    # Edit package.json, bump version, then run:
+    
+    make clean all
+    git add -u
+    git commit -m "bump npm v0.1.0"
+    git tag -a v0.1.0 -m "version 0.1.0"
+    git push --tags
+    
