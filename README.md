@@ -51,4 +51,6 @@ Note to self on how to tag release
     git commit -m "bump npm v0.1.0"
     git tag -a v0.1.0 -m "version 0.1.0"
     git push --tags
+    npm publish
+    
     
