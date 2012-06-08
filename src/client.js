@@ -98,6 +98,111 @@ function parseResponse(req, error, body) {
     return resp;
 }
 
+// The Promise class provides a way to register error/success callbacks
+// for a Barrister function call without inlining them on the call itself.
+//
+// To use this mechanism, simply omit the callback parameter when making
+// a function call.  For example:
+//
+//     var promise = myService.someRpcFunction("arg1", "arg2");
+//     promise.error(function(err) { console.log("err:" + err); });
+//     promise.success(function(result) { console.log("success: " + result); });
+//
+// The Promise constructor is called internally -- you don't create these
+// yourself.
+//
+function Promise() {
+    var me = this;
+    this.errCallback     = null;
+    this.resultCallback  = null;
+    this.callbackInvoked = false;
+    this.respReceived    = false;
+    
+    // This callback function will be used in place of the
+    // callback you would provide inlined on a barrister function call
+    this.callback = function(err, result) {
+        me.err    = err;
+        me.result = result;
+        me.respReceived = true;
+        me._triggerCallback();
+    };
+}
+
+// error() lets you register the callback function to invoke if
+// the RPC call returns a JSON-RPC error.  The callback is passed the
+// err object.
+//
+// The `context` param is optional.  If provided, the callback
+// function will be invoked using call(): `callback.call(context, err)`
+//
+// This function supports chaining.  For example:
+//
+//     promise.error(errorHandler).success(successHandler);
+//
+Promise.prototype.error = function(callback, context) {
+    this.errCallback = callback;
+    this.errContext  = context;
+    this._triggerCallback();
+    return this;
+};
+
+// success() lets you register the callback function to invoke if
+// the RPC call does not return an errror.  The callback is passed the
+// result slot from the JSON-RPC response.
+//
+// The `context` param is optional.  If provided, the callback
+// function will be invoked using call(): `callback.call(context, result)`
+//
+// This function supports chaining.  For example:
+//
+//     promise.error(errorHandler).success(successHandler);
+//
+Promise.prototype.success = function(callback, context) {
+    this.resultCallback = callback;
+    this.resultContext  = context;
+    this._triggerCallback();
+    return this;
+};
+
+// _triggerCallback() is a private function that calls the
+// registered success/error callback once we get a response
+// from the server.
+//
+// It flips an internal flag so that callbacks are only 
+// invoked once.
+//
+Promise.prototype._triggerCallback = function() {
+    if (this.callbackInvoked) {
+        return;
+    }
+    
+    if (this.respReceived && this.err) {
+        // If we receive an error we always want to invoke this branch,
+        // as we never want to call the success handler in this case.
+        if (this.errCallback) {
+            this.callbackInvoked = true;
+            if (this.errContext) {
+                this.errCallback.call(this.errContext, this.err);
+            }
+            else {
+                this.errCallback(this.err);
+            }
+        }
+    }
+    else if (this.respReceived && this.resultCallback) {
+        // result can be null, so we don't test for this.result
+        // as long as there's no this.err, we can invoke this branch
+        
+        this.callbackInvoked = true;
+        if (this.resultContext) {
+            this.resultCallback.call(this.resultContext, this.result);
+        }
+        else {
+            this.resultCallback(this.result);
+        }
+    }
+};
+
 // The Contract class represents a single parsed IDL.  Contracts contain interfaces,
 // structs, and enums.  It also encapsulates the type validation rules.
 //
@@ -523,17 +628,29 @@ function Client(transport) {
 // `callback` - function that accepts an error.  Will be called when request
 //              completes.  If successful, error will be undefined.  Otherwise
 //              it will contain a JSON-RPC response with an error slot.
+//
+// If callback is not passed in, a Promise will be returned.
+//
 Client.prototype.loadContract = function(callback) {
     var me = this;
-    me.request("barrister-idl", [], function(err, result) {
+    var onResponse = null;
+    var promise    = null;
+    
+    if (!callback) {
+        promise  = new Promise();
+        callback = promise.callback;
+    }
+    
+    me.request("barrister-idl", [], function (err, result) {
         if (err) {
             callback(err);
         }
         else {
             me.contract = new Contract(result);
-            callback();
+            callback(null, result);
         }
     });
+    return promise;
 };
 
 // getMeta returns an object of name/value pair metadata for the client's Contract
@@ -601,13 +718,45 @@ Client.prototype._proxy = function(funcProxyCreator, ifaceName) {
 
 // Creates a function proxy for Client, which will make a request to the
 // server when called.
+//
+// This function proxy is what your code actually invokes when you call
+// a RPC function.  Pass in the arguments that the RPC function expects,
+// plus an optional callback function.  If the callback function is 
+// not included, a Promise object is returned.
+//
 Client.prototype._functionProxy = function(method) {
     var client = this;
+    
+    // Generate the proxy function
     return function() {
-        // last arg is always the callback. pop it off the
-        // args copy so that it's not passed as a RPC parameter
-        var args = Array.prototype.slice.call(arguments);
-        var callback = args.pop();
+        var callback = null, 
+            lastArg  = null,
+            promise  = null,
+            args = Array.prototype.slice.call(arguments);
+            
+        if (arguments.length > 0) {
+            //
+            // Check to see if the last argument is a function.
+            // If so, we pop it from the args array, and use that
+            // as the callback function to invoke when the response is
+            // received.
+            //
+            lastArg = arguments[arguments.length-1];
+            if (lastArg !== undefined && lastArg !== null && typeof lastArg === "function") {
+                callback = args.pop();
+            }
+        }
+        
+        //
+        // If no callback function was provided, create a Promise object
+        // and use that to handle the response.  You are then expected to
+        // call success() and error() on the promise to register your
+        // callbacks.
+        //
+        if (!callback) {
+            promise  = new Promise();
+            callback = promise.callback;
+        }
 
         // sanity check
         if (callback === undefined || callback === null || typeof callback !== "function") {
@@ -615,8 +764,10 @@ Client.prototype._functionProxy = function(method) {
         }
 
         client.request(method, args, callback);
+        return promise;
     };
 };
+
 
 // request makes a single request to the server
 Client.prototype.request = function(method, params, callback) {
