@@ -338,7 +338,7 @@ Contract.prototype.validate = function(namePrefix, expected, isArray, val) {
             // on the struct
             for (i in val) {
                 if (val.hasOwnProperty(i) && !fieldKeys[i]) {
-                    return [ false, namePrefix+"."+e.name+" does not exist in type '" + 
+                    return [ false, namePrefix+"." + i + " does not exist in type '" + 
                              expected.type + "'" ];
                 }
             }
