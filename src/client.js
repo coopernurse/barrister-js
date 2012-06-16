@@ -304,8 +304,7 @@ Contract.prototype.validate = function(namePrefix, expected, isArray, val) {
             // This is our way of distinguishing floats from integers in JS
             // See: http://bit.ly/zBGvzR
             if (expected.type === "int") {
-                isInt = val===+val && val===(val|0);
-                if (!isInt) {
+                if (val % 1 !== 0) {
                     return me.validationErr(namePrefix, expected.type, "float", val);
                 }
             }
