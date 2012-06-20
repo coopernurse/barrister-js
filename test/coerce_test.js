@@ -93,4 +93,12 @@ describe("type coercion - default implementation", function() {
         }
     });
     
+    it("passes type validation post-coercion", function() {
+        var params = [ 32, "3211" ];
+        assert.isNull(contract.validateReq({ "method" : "UserService.create", "params" : params }));
+        
+        params = [ { "id" : "322", "name" : true, "active" : "true", "age" : "32.22", "roles" : [ ] } ];
+        assert.isNull(contract.validateReq({ "method" : "UserService.update", "params" : params }));
+    });
+    
 });
