@@ -15,7 +15,10 @@
 //    function to simplify this.  Pass it the original req you were given, 
 //    an error string (if the request failed, or null if succeeded), and the raw response body.
 //
-var httpClient = function(o) {
+// opts is an optional object that is passed to the Client -- 
+// see the Client constructor for details
+//
+var httpClient = function(o, opts) {
     var transport = o;
 
     // Assume that o is an URL endpoint
@@ -43,7 +46,7 @@ var httpClient = function(o) {
         };
     }
 
-    return new Client(transport);
+    return new Client(transport, opts);
 };
 
 // Export blessed functions to the Barrister namespace

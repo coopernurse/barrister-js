@@ -1,0 +1,20 @@
+
+struct Role {
+   id     int
+   name   string    
+}
+
+struct User {
+    id       int
+    name     string
+    active   bool
+    age      float
+    roles    []Role
+}
+
+interface UserService {
+
+    create(userId string, age int) bool
+
+    update(user User) bool          
+}

@@ -4,3 +4,4 @@ docs/
 node_modules/
 post-build/
 barrister-js.tmproj
+test/sample.json

@@ -98,6 +98,57 @@ function parseResponse(req, error, body) {
     return resp;
 }
 
+// barrister will only call this if coercion is required (i.e. impls don't need to check for expected type matches)
+//
+// params:
+//   expectedType: string. barrister primitive type expected (int, float, string, bool)
+//   val: value to coerce
+// 
+// returns: if coercion successful, returns the newly coerced value. 
+//          if coercion failed, returns val
+//
+function defaultCoerce(expectedType, val) {
+    var x, type;
+    
+    if (val === null || val === undefined) {
+        // don't attempt to convert
+        return val;
+    }
+
+    type = typeof val;
+
+    if (type === "boolean" || type === "number") {
+        if (expectedType === "string") {
+            return val.toString();
+        }
+    }
+    else if (type === "string") {
+        if (expectedType === "bool") {
+            if (val === "true") {
+                return true;
+            }
+            else if (val === "false") {
+                return false;
+            }
+        }
+        else if (expectedType === "int") {
+            x = parseInt(val, 10);
+            if (x.toString() === val && val !== "NaN") {
+                return x;
+            }
+        }
+        else if (expectedType === "float") {
+            x = parseFloat(val);
+            if (x.toString() === val && val !== "NaN") {
+                return x;
+            }
+        }
+    }
+
+    // fall through
+    return val;
+}
+
 // The Promise class provides a way to register error/success callbacks
 // for a Barrister function call without inlining them on the call itself.
 //
@@ -206,10 +257,14 @@ Promise.prototype._triggerCallback = function() {
 // The Contract class represents a single parsed IDL.  Contracts contain interfaces,
 // structs, and enums.  It also encapsulates the type validation rules.
 //
-// `idl` - Barrister parsed IDL (array of objects)
-function Contract(idl) {
+// * `idl` - Barrister parsed IDL (array of objects)
+// * `coerce` - optional. function that accepts (expectedType, val), and 
+//   return a coerced version of val that matches the expectedType if possible.
+//
+function Contract(idl, coerce) {
     var i, x, e, f;
     this.idl = idl;
+    this.coerce = coerce;
     this.interfaces = { };
     this.functions  = { };
     this.structs    = { };
@@ -241,6 +296,54 @@ function Contract(idl) {
         }
     }
 }
+
+Contract.prototype.coerceRecursive = function(expectedType, isArray, val) {
+    var me = this;
+    var t, fields, e, i;
+    
+    if (me.coerce && val !== null && val !== undefined) {
+        t = typeof val;
+        if (isArray === true) {
+            if (t !== "object" || !val instanceof Array) {
+                // val isn't an array - bail
+                return val;
+            }
+
+            // Recursively coerce all array members
+            for (i = 0; i < val.length; i++) {
+                val[i] = me.coerceRecursive(expectedType, false, val[i]);
+            }
+
+            return val;
+        }
+        else if (expectedType === "string" || expectedType === "bool" ||
+                 expectedType === "int"    || expectedType === "float") {
+            
+            return me.coerce(expectedType, val);
+        }
+        else if (me.structs[expectedType]) {
+            // we expect a user defined struct. val must be a JS object
+            if (t !== "object") {
+                return val;
+            }
+
+            // get all fields for this struct, including fields on ancestors
+            fields = me.getAllStructFields([], me.structs[expectedType]);
+            for (i = 0; i < fields.length; i++) {
+                e = fields[i];
+                
+                // recursively validate the field. return on any failure.
+                val[e.name] = me.coerceRecursive(e.type, e.is_array, val[e.name]);
+            }
+            
+            return val;
+        }
+
+    }
+    
+    // fall through
+    return val;
+};
 
 // validate takes an expected type and value and returns a two element array
 // that indicates whether the value matches the expected type.
@@ -403,6 +506,15 @@ Contract.prototype.validateReq = function(req) {
                               func.params[i], 
                               func.params[i].is_array,
                               req.params[i]);
+                              
+        if (!valid[0]) {
+            req.params[i] = this.coerceRecursive(func.params[i], func.params[i].is_array, req.params[i]);
+            valid = this.validate(func.params[i].name, 
+                                  func.params[i], 
+                                  func.params[i].is_array,
+                                  req.params[i]);
+        }
+        
         if (!valid[0]) {
             msg = "Invalid request param["+i+"]: " + valid[1];
             return errResp(req.id, -32602, msg);
@@ -613,12 +725,26 @@ Batch.prototype.wrapResp = function(req, resp) {
 // the given transport function.
 //
 // `transport` is a function that accepts a request object and callback function
-function Client(transport) {
+// `opts` is an object that has the following keys:
+//    * `coerce` - set to true to use default type coercion func, or set to a 
+//       custom function of signature:  function(expectedType, val)
+//
+function Client(transport, opts) {
     this.transport = transport;
-    this.trace = null;
+    this.trace  = null;
+    this.coerce = null;
 
     // You may set this to false to disable client side request validation
     this.validateRequest = true;
+    
+    if (opts && opts.coerce) {
+        if (opts.coerce === true) {
+            this.coerce = defaultCoerce;
+        }
+        else if (typeof opts.coerce === "function") {
+            this.coerce = opts.coerce;
+        }
+    }
 }
 
 // laodContract requests the IDL from the server and sets a Contract object
@@ -645,7 +771,7 @@ Client.prototype.loadContract = function(callback) {
             callback(err);
         }
         else {
-            me.contract = new Contract(result);
+            me.contract = new Contract(result, me.coerce);
             callback(null, result);
         }
     });
@@ -815,4 +941,21 @@ Client.prototype._send = function(req, callback) {
 
         callback(resp);
     });
+};
+
+// inprocClient returns a Client instance that calls the given Server
+// directly in process.  This is useful in cases where you develop
+// separate barrister components as separate packages, but wind up 
+// combining them into a single program at runtime.  It is also useful
+// for unit testing barrister server implementations because your
+// tests can consume the service as a Barrister client, which will 
+// perform all the type checks on requests/response values.  This will
+// catch many problems automatically that you'd normally have to write
+// assertions for (e.g. function returned an int, but you expected a bool)
+var inprocClient = function(server, opts) {
+    var transport = function(req, callback) {
+        server.handle({}, req, callback);
+    };
+
+    return new Client(transport, opts);
 };

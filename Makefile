@@ -1,5 +1,5 @@
 
-all: dist
+all: mocha
 
 clean:
 	rm -rf dist
@@ -25,3 +25,9 @@ browser: json
 node: init
 	cat src/node_header.js src/client.js src/server.js src/node_footer.js > dist/barrister.node.js
 	jshint dist/barrister.node.js
+	
+barrister:
+	barrister -j test/sample.json test/sample.idl
+	
+mocha: dist barrister
+	mocha --reporter spec
