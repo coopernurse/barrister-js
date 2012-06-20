@@ -508,7 +508,7 @@ Contract.prototype.validateReq = function(req) {
                               req.params[i]);
                               
         if (!valid[0]) {
-            req.params[i] = this.coerceRecursive(func.params[i], func.params[i].is_array, req.params[i]);
+            req.params[i] = this.coerceRecursive(func.params[i].type, func.params[i].is_array, req.params[i]);
             valid = this.validate(func.params[i].name, 
                                   func.params[i], 
                                   func.params[i].is_array,
