@@ -1,4 +1,4 @@
-var barrister = require('../dist/barrister.node.js');
+var barrister = require('../lib/barrister.node.js');
 var assert    = require('chai').assert;
 var fs        = require('fs');
 
