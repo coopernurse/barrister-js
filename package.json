@@ -1,16 +1,16 @@
 {
   "name": "barrister",
   "description": "Client and server bindings for Barrister RPC",
-  "version": "0.1.2",
+  "version": "0.1.7",
   "author": "James Cooper <james@bitmechanic.com>",
   "license": "MIT",
   "contributors": [
     { "name": "James Cooper", "email": "james@bitmechanic.com" }
   ],
   "keywords": ["rpc", "server"],
-  "main": "dist/barrister.node",
+  "main": "lib/barrister.node.js",
   "files": [
-      "dist/barrister.node.js",
+      "lib",
       "README.md",
       "LICENSE"
   ],
