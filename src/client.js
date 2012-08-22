@@ -540,7 +540,9 @@ Contract.prototype.validateResp = function(req, resp) {
     var valid = this.validate("", func.returns, func.returns.is_array, resp.result);
     if (!valid[0]) {
         var msg = "Invalid response for " + req.method + ": " + valid[1];
-        console.log("ERROR: " + msg);
+        if (typeof console !== "undefined" && console.log) {
+            console.log("ERROR: " + msg);
+        }
         return errResp(req.id, -32001, msg);
     }
     else {
