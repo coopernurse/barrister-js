@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/coopernurse/barrister-js.png)](http://travis-ci.org/coopernurse/barrister-js)
 # Barrister Javascript Bindings
 
 Develop type safe contracts for your web services!
