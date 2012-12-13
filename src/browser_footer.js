@@ -36,7 +36,14 @@ var httpClient = function(o, opts) {
                     }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
-                    callback(parseResponse(req, textStatus+" "+errorThrown, null));
+                    var resp;
+                    if (jqXHR && jqXHR.status === 0) {
+                        resp = errResp(req.id, -32002, "HTTP request aborted", jqXHR);
+                    }
+                    else {
+                        resp = parseResponse(req, textStatus+" "+errorThrown, null);
+                    }
+                    callback(resp);
                 },
                 success: function(data, textStatus, jqXHR) {
                     callback(parseResponse(req, null, data));
