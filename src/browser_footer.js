@@ -61,6 +61,7 @@ Barrister.httpClient = httpClient;
 Barrister.parseResponse = parseResponse;
 Barrister.Client = Client;
 Barrister.Contract = Contract;
+Barrister.Promise = Promise;
 Barrister.JSON_stringify = JSON_stringify;
 
 }());
