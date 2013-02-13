@@ -15,10 +15,15 @@
 //    function to simplify this.  Pass it the original req you were given, 
 //    an error string (if the request failed, or null if succeeded), and the raw response body.
 //
-// opts is an optional object that is passed to the Client -- 
+// clientOpts is an optional object that is passed to the Client --
 // see the Client constructor for details
 //
-var httpClient = function(o, opts) {
+// httpOpts is an optional object with callback functions "onSuccess" and "onError" which
+// (if defined) are invoked after each AJAX request and passed the same parameters as the
+// error and success functions jQuery defines plus the parsed JSON-RPC response.
+// This gives you a synchronous hook to intercept the raw response, inspect HTTP headers, etc.
+//
+var httpClient = function(o, clientOpts, httpOpts) {
     var transport = o;
 
     // Assume that o is an URL endpoint
@@ -43,17 +48,28 @@ var httpClient = function(o, opts) {
                     else {
                         resp = parseResponse(req, textStatus+" "+errorThrown, null);
                     }
+
+                    if (httpOpts && httpOpts.onError) {
+                        httpOpts.onError(jqXHR, textStatus, errorThrown, resp);
+                    }
+                    
                     callback(resp);
                 },
                 success: function(data, textStatus, jqXHR) {
-                    callback(parseResponse(req, null, data));
+                    var resp = parseResponse(req, null, data);
+
+                    if (httpOpts && httpOpts.onSuccess) {
+                        httpOpts.onSuccess(data, textStatus, jqXHR, resp);
+                    }
+
+                    callback(resp);
                 }
             };
             jQuery.ajax(o, settings);
         };
     }
 
-    return new Client(transport, opts);
+    return new Client(transport, clientOpts);
 };
 
 // Export blessed functions to the Barrister namespace
