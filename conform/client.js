@@ -48,7 +48,6 @@ function nextCommand() {
                     }
                     
                     outStream.write(cols[0] + "|" + cols[1] + "|" + cols[2] + s + "\n");
-                    outStream.flush();
                 }
             }
             batch = null;
@@ -76,7 +75,6 @@ function nextCommand() {
                     }
 
                     outStream.write(cols[0] + "|" + cols[1] + "|" + cols[2] + s + "\n");
-                    outStream.flush();
                     nextCommand();
                 });
             }
