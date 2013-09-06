@@ -1,0 +1,25 @@
+<!doctype html>
+<html ng-app="calcApp">
+	<head>
+		<title>barrister - calc - angularjs</title>
+		<script type="text/javascript" src="http://barrister.bitmechanic.com/dist/js/latest/json2.min.js"></script>
+		<script type="text/javascript" src="http://barrister.bitmechanic.com/dist/js/latest/barrister.browser.js"></script>
+		<script src="http://code.angularjs.org/1.2.0-rc.2/angular.min.js"></script>
+		<script src="angular-calc.js"></script>
+	</head>
+	<body>
+		<div ng-controller="CalcCntl">
+			<table border="0">
+				<tr>
+					<td><input type="text" ng-model="x"/></td>
+					<td><input type="text" ng-model="y"/></td>
+					<td>
+						<button ng-click="add()">+</button>
+						<button ng-click="subtract()">-</button>
+					</td>
+					<td>= <span>{{result}}</span></td>
+				</tr>
+			</table>
+	    </div>
+	</body>
+</html>
