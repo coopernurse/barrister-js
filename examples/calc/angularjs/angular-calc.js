@@ -19,20 +19,20 @@ app.service("RPC", function($http) {
 
 	    // update this list with all Barrister endpoints and interfaces you want
 	    // to expose
-		endpoints = [
-			{ url: "/api/calc", interfaces: [ "Calculator" ] }
-		],
+	    endpoints = [
+	    { url: "/api/calc", interfaces: [ "Calculator" ] }
+	    ],
 
-		clientOpts = {
+	    clientOpts = {
 			// automatically convert JS types to conform to IDL types
 			// if it can be done w/o data loss (e.g. "1" -> 1, "true" -> true)
 			coerce: true
 		};
 
 
-	function initClient(endpoint) {
-		var transport = function(req, callback) {
-			$http.post(endpoint.url, Barrister.JSON_stringify(req))
+		function initClient(endpoint) {
+			var transport = function(req, callback) {
+				$http.post(endpoint.url, Barrister.JSON_stringify(req))
 				.success(function(data, status, headers, config) {
 					callback(Barrister.parseResponse(req, null, data));
 				})
@@ -42,26 +42,26 @@ app.service("RPC", function($http) {
 			},
 			client = new Barrister.Client(transport, clientOpts);
 
-		client.loadContract(function(err) {
-			var i, name;
-		    if (err) { 
-		        alert("Unable to load contract: " + Barrister.JSON_stringify(err));
-		    }
-		    else {
-		    	for (i = 0; i < endpoint.interfaces.length; i++) {
-		    		name = endpoint.interfaces[i];
-			        RPC[name] = client.proxy(name);
-			    }
-		    }
-		});
-	}
+			client.loadContract(function(err) {
+				var i, name;
+				if (err) { 
+					alert("Unable to load contract: " + Barrister.JSON_stringify(err));
+				}
+				else {
+					for (i = 0; i < endpoint.interfaces.length; i++) {
+						name = endpoint.interfaces[i];
+						RPC[name] = client.proxy(name);
+					}
+				}
+			});
+		}
 
-	for (i = 0; i < endpoints.length; i++) {
-		initClient(endpoints[i]);
-	}
+		for (i = 0; i < endpoints.length; i++) {
+			initClient(endpoints[i]);
+		}
 
-	return RPC;
-});
+		return RPC;
+	});
 
 app.controller("CalcCntl", ["$scope", "RPC", function($scope, RPC) {
 
