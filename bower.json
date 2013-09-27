@@ -1,0 +1,14 @@
+{
+  "name": "barrister",
+  "version": "0.1.12",
+  "main": "dist/barrister.browser.js",
+  "ignore": [
+    "Makefile", "*.tmproj", "conform", "docs", "examples", "lib",
+    "node_modules", "package.json", "post-build", "*.sh",
+    "src", "test", "vendor"
+  ],
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}
