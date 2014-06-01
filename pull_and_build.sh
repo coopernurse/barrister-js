@@ -2,12 +2,13 @@
 
 set -e
 
+git pull
+
 export BARRISTER=/usr/local/github/barrister
 source $BARRISTER/env/bin/activate
 export PYTHONPATH=$PYTHONPATH:$BARRISTER
 export PATH=$PATH:$BARRISTER/bin
 
-git pull
 npm install
 echo $PATH
 make clean all
