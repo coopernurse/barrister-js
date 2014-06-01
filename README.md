@@ -53,4 +53,3 @@ Note to self on how to tag release
     git push --tags
     npm publish
     
-    
