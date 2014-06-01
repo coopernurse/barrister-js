@@ -2,6 +2,11 @@
 
 set -e
 
+BARRISTER=/usr/local/github/barrister
+source $BARRISTER/env/activate
+export PYTHONPATH=$PYTHONPATH:$BARRISTER
+export PATH=$PATH:$BARRISTER/bin
+
 git pull
 npm install
 make clean all
