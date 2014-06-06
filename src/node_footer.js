@@ -28,6 +28,7 @@ exports.httpClient = httpClient;
 exports.inprocClient = inprocClient;
 exports.Client = Client;
 exports.Server = Server;
+exports.Contract = Contract;
 exports.JSON_stringify = JSON_stringify;
 exports.errResp = errResp;
 exports.parseResponse = parseResponse;
