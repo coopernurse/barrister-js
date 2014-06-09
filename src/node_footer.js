@@ -1,7 +1,7 @@
 
 // httpClient returns a Client instance for the given URL endpoint
 //
-// opts is an optional object that is passed to the Client -- 
+// opts is an optional object that is passed to the Client --
 // see the Client constructor for details
 //
 var httpClient = function(endpoint, opts) {
@@ -28,4 +28,7 @@ exports.httpClient = httpClient;
 exports.inprocClient = inprocClient;
 exports.Client = Client;
 exports.Server = Server;
+exports.Contract = Contract;
 exports.JSON_stringify = JSON_stringify;
+exports.errResp = errResp;
+exports.parseResponse = parseResponse;
