@@ -1,7 +1,7 @@
 {
   "name": "barrister",
   "description": "Client and server bindings for Barrister RPC",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "author": "James Cooper <james@bitmechanic.com>",
   "license": "MIT",
   "contributors": [
