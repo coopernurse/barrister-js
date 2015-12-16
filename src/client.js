@@ -304,7 +304,7 @@ Contract.prototype.coerceRecursive = function(expectedType, isArray, val) {
     if (me.coerce && val !== null && val !== undefined) {
         t = typeof val;
         if (isArray === true) {
-            if (t !== "object" || !val instanceof Array) {
+            if (t !== "object" || !(val instanceof Array)) {
                 // val isn't an array - bail
                 return val;
             }
@@ -379,7 +379,7 @@ Contract.prototype.validate = function(namePrefix, expected, isArray, val) {
         var t = typeof val;
         if (isArray === true) {
             // IDL expects an array. Reject val if it's not a JS Array
-            if (t !== "object" || !val instanceof Array) {
+            if (t !== "object" || !(val instanceof Array)) {
                 return me.validationErr(namePrefix, "[]"+expected.type, t, val);
             }
 
