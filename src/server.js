@@ -281,7 +281,7 @@ Server.prototype._execute = function(req, callback) {
             });
 
             // Key line: invoke the handler function with the given params
-            handler[funcName].apply(handler, callParams);
+            callback(handler[funcName].apply(handler, callParams));
         }
         else {
             return callback(errResp(req.id, -32601, "Method not found: " + req.method));
